@@ -14,3 +14,8 @@
 $router->get('/', function () use ($router) {
     return $router->app->version();
 });
+
+$router->get('/vehicles', 'UnyoPostController@get');
+$router->post('/vehicles', 'UnyoPostController@post');
+
+$router->options('{path:.*}', function(){}); // any path
