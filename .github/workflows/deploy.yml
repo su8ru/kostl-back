@@ -1,4 +1,4 @@
-name: Deploy into production server
+name: deploy
 
 on:
   push:
@@ -7,37 +7,57 @@ on:
 
 jobs:
   deploy:
+    name: deploy with rsync
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: prepare .ssh dir
-        run: mkdir -p .ssh && chmod 700 .ssh
-      - name: ssh key generate
-        run: echo "$SSH_PRIVATE_KEY" > .ssh/id_rsa && chmod 600 .ssh/id_rsa
+        run: mkdir -p ~/.ssh && chmod 700 ~/.ssh
+
+      - name: prepare ssh key
+        run: echo "$SSH_KEY" > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      - name: add permission
-        run: chmod -R 775 * && sudo groupadd -f dev && sudo useradd apache -g dev && sudo chown -R apache:dev *
-      - name: push with rsync
-        run: rsync -rlptgoD -O --delete --exclude ".git/" --exclude ".env" -e "ssh -i .ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p ${SSH_PORT}" * $SSH_USER@$SSH_HOST:$DIR
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+      - name: prepare ssh config
+        run: |
+          cat <<EOF > ~/.ssh/config
+          Host server
+            HostName              $SSH_HOST
+            Port                  $SSH_PORT
+            User                  $SSH_USER
+            IdentityFile          ~/.ssh/id_rsa
+            IdentitiesOnly        yes
+            StrictHostKeyChecking no
+            UserKnownHostsFile    /dev/null
+          EOF
         env:
-          DIR: /var/www/kostl_su8ru_app
           SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PORT: ${{ secrets.SSH_PORT }}
-      - name: setup at remote server
+          SSH_USER: ${{ secrets.SSH_USER }}
+      - name: set permission
+        run: chmod -R 775 * && sudo groupadd -f docker && sudo useradd deploy -g docker && sudo chown -R deploy:docker *
+      - name: push with rsync
+        run: rsync -rlptgoD -O -v --delete --exclude ".git/" --exclude "server/.env" -e "ssh -F /home/runner/.ssh/config" * server:$DIR
+        env:
+          DIR: ${{ secrets.DEPLOY_DIR }}
+
+  docker:
+    name: build and up
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: build & up -d
         uses: appleboy/ssh-action@master
         with:
           host:     ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          key:      ${{ secrets.SSH_KEY }}
           port:     ${{ secrets.SSH_PORT }}
           envs: DIR
           script_stop: true
           script: |
-            source .bashrc
             cd $DIR
-            composer install
-            php artisan migrate
+            docker-compose build
+            docker-compose up -d
         env:
-          DIR: /var/www/kostl_su8ru_app
+          DIR: ${{ secrets.DEPLOY_DIR }}
