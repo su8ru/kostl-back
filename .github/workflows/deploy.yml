@@ -37,7 +37,7 @@ jobs:
       - name: set permission
         run: chmod -R 775 * && sudo groupadd -f docker && sudo useradd deploy -g docker && sudo chown -R deploy:docker *
       - name: push with rsync
-        run: rsync -rlptgoD -O -v --delete --exclude ".git/" --exclude "server/.env" -e "ssh -F /home/runner/.ssh/config" * server:$DIR
+        run: rsync -rlptgoD -O -v --delete --exclude ".git/" --exclude ".env" -e "ssh -F /home/runner/.ssh/config" * server:$DIR
         env:
           DIR: ${{ secrets.DEPLOY_DIR }}
 
