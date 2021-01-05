@@ -5,7 +5,7 @@ ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 
 # install
 RUN apt-get update \
-  && apt-get install -y libonig-dev zlib1g-dev libfreetype6-dev libjpeg62-turbo-dev libpng-dev git
+  && apt-get install -y libonig-dev zlib1g-dev libfreetype6-dev libjpeg62-turbo-dev libpng-dev git zip unzip
 RUN docker-php-ext-install pdo_mysql
 
 # gd
