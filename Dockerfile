@@ -30,7 +30,10 @@ RUN composer install --no-scripts --no-autoloader -d /tmp
 COPY . .
 RUN mv -n /tmp/vendor ./ \
     && composer dump-autoload
-RUN php artisan migrate && php artisan db:seed --force
 
 # enable module
 RUN a2enmod rewrite
+
+RUN chmod +x ./entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
